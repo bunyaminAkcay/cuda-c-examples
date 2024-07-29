@@ -70,8 +70,6 @@ void MatrixReader<T>::readMatrixFromFile(std::string fileName){
         index++;
     }
 
-    infile.seekg(pos);
-
     while (std::getline(infile, line)) {
         if (line.empty()) continue;
         std::istringstream iss(line);
@@ -103,10 +101,10 @@ void MatrixReader<T>::readMatrixFromFile(std::string fileName){
 
             if (hasValue) {
                 
-                _values[index-1] = value;
+                _values[index] = value;
             }
             else {
-                _values[index-1] = static_cast<T>(1);
+                _values[index] = static_cast<T>(1);
             }
             index++;   
         }
@@ -115,12 +113,28 @@ void MatrixReader<T>::readMatrixFromFile(std::string fileName){
 
     if (!symmetrical)
     {
-        assert(nnz == index-1);
+        assert(nnz == index);
     }
 
     nnz = index;
     
-    
+    if (symmetrical)
+    {
+        size_t* new_rowIds = new size_t[nnz];
+        size_t* new_colIds = new size_t[nnz];
+        T* new_values = new T[nnz];
+        memcpy(new_rowIds, _rowIds, nnz * sizeof(size_t));
+        memcpy(new_colIds, _colIds, nnz * sizeof(size_t));
+        memcpy(new_values, _values, nnz * sizeof(T));
+
+        delete[] _rowIds;
+        delete[] _colIds;
+        delete[] _values;
+
+        _rowIds = new_rowIds;
+        _colIds = new_colIds;
+        _values = new_values;
+    }
     
     
     infile.close();
@@ -229,12 +243,7 @@ bool CooMatrixReader<T>::saveSparseMatrixAsPPM3Image(std::string fileName){
 }
 
 template<class T>
-CooMatrixReader<T>::~CooMatrixReader(){
-    free(values);
-    free(colIds);
-    free(rowIds);
-
-}
+CooMatrixReader<T>::~CooMatrixReader(){}
 
 template class MatrixReader<float>;
 template class MatrixReader<double>;
