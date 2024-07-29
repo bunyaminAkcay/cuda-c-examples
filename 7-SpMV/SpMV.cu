@@ -4,7 +4,8 @@ typedef float element_t;
 
 int main()
 {
-    CooMatrixReader<element_t> cooMatrixReader("bcsstk01.mtx", true);
-    cooMatrixReader.saveSparseMatrixAsPPM3Image("bcsstk01");
+    CooMatrixReader<element_t> cooMatrixReader("1138_bus.mtx", true);
+    cooMatrixReader.saveSparseMatrixAsPPM3Image("1138_bus");
+    
     return 0;
 }

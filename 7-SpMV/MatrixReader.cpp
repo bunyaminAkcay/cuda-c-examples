@@ -43,8 +43,6 @@ void MatrixReader<T>::readMatrixFromFile(std::string fileName){
         _values = new T [nnz];
     }
     
-
-
     bool hasValue = false;
 
     std::streampos pos = infile.tellg();
