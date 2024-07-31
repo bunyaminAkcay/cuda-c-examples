@@ -5,10 +5,10 @@ CXX = g++
 CXXFLAGS = -std=c++11
 
 # Target executable
-TARGET = build/SpMM
+TARGET = build/test
 
 # Source files
-CU_SOURCES = src/SpMM.cu
+CU_SOURCES = src/test.cu 
 CPP_SOURCES = src/MatrixParser.cpp src/MatrixHelper.cpp
 
 # Object files
