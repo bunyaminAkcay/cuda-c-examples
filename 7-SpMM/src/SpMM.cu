@@ -1,4 +1,6 @@
-#include "MatrixReader.h"
+#include "MatrixParser.h"
+#include "MatrixHelper.h"
+
 #include <cuda_runtime.h>
 #include <cusparse.h>
 
@@ -72,92 +74,46 @@ void cuSparseSpMMwithCOO(int* h_A_rowIds, int* h_A_colIds, element_t* h_A_values
 
 }
 
-template<typename T>
-void initRandomDenseMatrix(T *matrix, size_t const rowCount, size_t const colCount)
-{
-    for (size_t row = 0; row < rowCount; row++)
-    {
-        for (size_t col = 0; col < colCount; col++)
-        {
-            matrix[row * colCount + col] = rand() / static_cast<T>(RAND_MAX);
-        }
-    }
-}
-
-template<typename T>
-void initZeroMatrix(T *matrix, size_t const rowCount, size_t const colCount)
-{
-    for (size_t row = 0; row < rowCount; row++)
-    {
-        for (size_t col = 0; col < colCount; col++)
-        {
-            matrix[row * colCount + col] = 0;
-        }
-    }
-}
-
-template<typename T>
-void printResult(size_t const m, size_t const n, size_t const k, T const* A, T const* B, T const* C, T const* D)
-{
-    size_t const matrixCount = 4;
-    T const* matrixReferences[matrixCount] = {A, B, C, D};
-    
-    char matrixNames[matrixCount] = {'A', 'B', 'C', 'D'};
-    size_t matrixDimensions[matrixCount][2] = { {m, k}, {k, n}, {m, n}, {m, n}};
-
-    for (size_t k = 0; k < matrixCount; k++)
-    {
-        printf("%c [\n\n\t", matrixNames[k]);
-        for (size_t j = 0; j < matrixDimensions[k][0]; j++)
-        {
-            for (size_t i = 0; i < matrixDimensions[k][1]; i++)
-            {
-                printf("%f ", matrixReferences[k][matrixDimensions[k][1] * j + i]);
-            }
-            printf("\n\t");
-        }
-        printf("\n]\n");
-    }
-}
-
 int main()
 {
     bool symmetrical = false;
     bool const printResults = true;
     
-    CooMatrixReader<element_t> cooMatrixReader("matrices/b1_ss.mtx", symmetrical, Order::rowMajor);
     
-    cooMatrixReader.saveSparseMatrixAsPPM3Image("b1_ss");
+    CooMatrixParser<element_t> cooMatrixParser("matrices/b1_ss.mtx", symmetrical, Order::rowMajor);
     
-    size_t m = cooMatrixReader.getRowCount();
-    size_t k = cooMatrixReader.getColCount();
+    
+    cooMatrixParser.saveSparseMatrixAsPPM3Image("matrixImages/b1_ss");
+    
+    size_t m = cooMatrixParser.getRowCount();
+    size_t k = cooMatrixParser.getColCount();
     size_t n = m;
-    size_t nnz = cooMatrixReader.getNNZ();
+    size_t nnz = cooMatrixParser.getNNZ();
 
     element_t alpha = static_cast<element_t>(1);
     element_t beta = static_cast<element_t>(0);
 
-    int* h_A_rowIds = cooMatrixReader.rowIds;
-    int* h_A_colIds = cooMatrixReader.colIds;
-    element_t* h_A_values = cooMatrixReader.values; 
+    int* h_A_rowIds = cooMatrixParser.rowIds;
+    int* h_A_colIds = cooMatrixParser.colIds;
+    element_t* h_A_values = cooMatrixParser.values; 
 
     element_t *h_B = (element_t *)malloc(k * n * sizeof(element_t));
     element_t *h_C = (element_t *)malloc(m * n * sizeof(element_t));
     element_t *h_D = (element_t *)malloc(m * n * sizeof(element_t));
     
-    initRandomDenseMatrix(h_B, k, n);
-    initZeroMatrix(h_C, m, n);
-    initZeroMatrix(h_D, m, n);
+    MatrixHelper<element_t>::initRandomDenseMatrix(h_B, k, n);
+    MatrixHelper<element_t>::initZeroMatrix(h_C, m, n);
+    MatrixHelper<element_t>::initZeroMatrix(h_D, m, n);
     
     cuSparseSpMMwithCOO(h_A_rowIds, h_A_colIds, h_A_values, h_B, h_C, h_D, m, k, n, nnz, alpha, beta);
 
-    if(printResults && cooMatrixReader.sparseMatrixToClassicMatrix()){
-        printResult(m, n, k, cooMatrixReader.getClassicMatrix(), h_B, h_C, h_D);
+    if(printResults && cooMatrixParser.sparseMatrixToClassicMatrix()){
+        MatrixHelper<element_t>::printResult(m, n, k, cooMatrixParser.getClassicMatrix(), h_B, h_C, h_D);
     } 
     
     free(h_B);
     free(h_C);
     free(h_D);
-
+    
     return 0;
 }

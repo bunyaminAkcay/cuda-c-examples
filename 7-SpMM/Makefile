@@ -5,11 +5,11 @@ CXX = g++
 CXXFLAGS = -std=c++11
 
 # Target executable
-TARGET = SpMM
+TARGET = build/SpMM
 
 # Source files
-CU_SOURCES = SpMM.cu
-CPP_SOURCES = MatrixReader.cpp
+CU_SOURCES = src/SpMM.cu
+CPP_SOURCES = src/MatrixParser.cpp src/MatrixHelper.cpp
 
 # Object files
 CU_OBJECTS = $(CU_SOURCES:.cu=.o)

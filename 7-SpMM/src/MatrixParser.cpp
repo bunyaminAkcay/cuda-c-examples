@@ -1,4 +1,4 @@
-#include "MatrixReader.h"
+#include "MatrixParser.h"
 
 #include <iostream>
 #include <fstream>
@@ -10,7 +10,7 @@
 #include <cstring>
 
 template<typename T>
-void MatrixReader<T>::readMatrixFromFile(std::string fileName){
+void MatrixParser<T>::readMatrixFromFile(std::string fileName){
     
     std::ifstream infile(fileName);
     if (!infile.is_open()) {
@@ -139,27 +139,27 @@ void MatrixReader<T>::readMatrixFromFile(std::string fileName){
 }
 
 template<typename T>
-size_t MatrixReader<T>::getRowCount(){
+size_t MatrixParser<T>::getRowCount(){
     return rowCount;
 }
 
 template<typename T>
-size_t MatrixReader<T>::getColCount(){
+size_t MatrixParser<T>::getColCount(){
     return colCount;
 }
 
 template<typename T>
-size_t MatrixReader<T>::getNNZ(){
+size_t MatrixParser<T>::getNNZ(){
     return nnz;
 }
 
 template<typename T>
-T* MatrixReader<T>::getClassicMatrix(){
+T* MatrixParser<T>::getClassicMatrix(){
     return classicMatrix;
 }
 
 template<typename T>
-void MatrixReader<T>::printCoordinates(){
+void MatrixParser<T>::printCoordinates(){
     for (size_t i = 0; i < nnz; i++)
     {
         printf("%d %d %f\n", _rowIds[i], _colIds[i], _values[i]);
@@ -168,7 +168,7 @@ void MatrixReader<T>::printCoordinates(){
 }
 
 template<typename T>
-void MatrixReader<T>::sort(Order order){
+void MatrixParser<T>::sort(Order order){
     
     int *primary, *secondary;
 
@@ -218,7 +218,7 @@ void MatrixReader<T>::sort(Order order){
 }
 
 template<typename T>
-bool MatrixReader<T>::sparseMatrixToClassicMatrix(){
+bool MatrixParser<T>::sparseMatrixToClassicMatrix(){
 
     if (rowCount > maxMatrixSizeToConvertNormalMatrix || colCount > maxMatrixSizeToConvertNormalMatrix)
     {
@@ -227,6 +227,7 @@ bool MatrixReader<T>::sparseMatrixToClassicMatrix(){
     }
     
 
+    delete classicMatrix;
     classicMatrix = new T[rowCount * colCount];
     std::fill(classicMatrix, classicMatrix + rowCount * colCount, T{});
 
@@ -243,7 +244,7 @@ bool MatrixReader<T>::sparseMatrixToClassicMatrix(){
 
 
 template<typename T>
-MatrixReader<T>::~MatrixReader(){
+MatrixParser<T>::~MatrixParser(){
 
     free(_rowIds);
     free(_colIds);
@@ -251,8 +252,8 @@ MatrixReader<T>::~MatrixReader(){
     free(classicMatrix);
 }
 
-template<class T>
-CooMatrixReader<T>::CooMatrixReader(std::string fileName, bool symmetrical, Order order){
+template<typename T>
+CooMatrixParser<T>::CooMatrixParser(std::string fileName, bool symmetrical, Order order){
     this->symmetrical = symmetrical;
     this->readMatrixFromFile(fileName);
     this->sort(order);
@@ -262,12 +263,13 @@ CooMatrixReader<T>::CooMatrixReader(std::string fileName, bool symmetrical, Orde
 }
 
 template<typename T>
-void CooMatrixReader<T>::plotMatrix(){
-
+void CooMatrixParser<T>::printCOO(){
+    this->printCoordinates();
 }
 
-template<class T>
-bool CooMatrixReader<T>::saveSparseMatrixAsPPM3Image(std::string fileName){
+
+template<typename T>
+bool MatrixParser<T>::saveSparseMatrixAsPPM3Image(std::string fileName){
 
     if (!this->sparseMatrixToClassicMatrix())
     {
@@ -307,11 +309,145 @@ bool CooMatrixReader<T>::saveSparseMatrixAsPPM3Image(std::string fileName){
     return true;
 }
 
-template<class T>
-CooMatrixReader<T>::~CooMatrixReader(){}
 
-template class MatrixReader<float>;
-template class MatrixReader<double>;
+template<typename T>
+CooMatrixParser<T>::~CooMatrixParser(){}
 
-template class CooMatrixReader<float>;
-template class CooMatrixReader<double>;
+template<typename T>
+CsrMatrixParser<T>::CsrMatrixParser(std::string fileName, bool symmetrical){
+    this->symmetrical = symmetrical;
+    this->readMatrixFromFile(fileName);
+    this->sort(Order::rowMajor);
+
+    colIds = this->_colIds;
+    values = this->_values;
+
+    rowPtr = new int[this->rowCount + 1];
+    std::fill(rowPtr, rowPtr + this->rowCount + 1, 0);
+    
+    int lastRow = 0;
+    int elementCount = 0;
+    int rowPtrIndex = 1;
+    
+    for (size_t i = 0; i < this->nnz; i++)
+    {
+        
+        if (this->_rowIds[i] == lastRow)
+        {
+            elementCount++;
+            continue;
+        }
+
+        assert(rowPtrIndex < this->rowCount + 1);
+
+        rowPtr[rowPtrIndex] = elementCount;
+        elementCount++;
+        rowPtrIndex++;
+        lastRow = this->_rowIds[i];
+    }
+    rowPtr[rowPtrIndex] = elementCount; 
+}
+
+template<typename T>
+void CsrMatrixParser<T>::printCSR(){
+
+    printf("Row Ptr:\n");
+    for (size_t i = 0; i < this->rowCount + 1; i++)
+    {
+        printf("%d ", rowPtr[i]);
+    }
+
+    printf("\nCol Ids:\n");
+    for (size_t i = 0; i < this->nnz; i++)
+    {
+        printf("%d ", colIds[i]);
+    }
+
+    printf("\nValues:\n");
+    for (size_t i = 0; i < this->nnz; i++)
+    {
+        std::cout << values[i] << " ";
+    }
+    printf("\n");
+}
+
+template<typename T>
+CsrMatrixParser<T>::~CsrMatrixParser(){
+    free(rowPtr);
+}
+
+template<typename T>
+CscMatrixParser<T>::CscMatrixParser(std::string fileName, bool symmetrical){
+    this->symmetrical = symmetrical;
+    this->readMatrixFromFile(fileName);
+    this->sort(Order::colMajor);
+
+    rowIds = this->_rowIds;
+    values = this->_values;
+
+    colPtr = new int[this->colCount + 1];
+    std::fill(colPtr, colPtr + this->colCount + 1, 0);
+    
+    int lastCol = 0;
+    int elementCount = 0;
+    int colPtrIndex = 1;
+    
+    for (size_t i = 0; i < this->nnz; i++)
+    {
+        
+        if (this->_colIds[i] == lastCol)
+        {
+            elementCount++;
+            continue;
+        }
+
+        assert(colPtrIndex < this->colCount + 1);
+
+        colPtr[colPtrIndex] = elementCount;
+        elementCount++;
+        colPtrIndex++;
+        lastCol = this->_colIds[i];
+    }
+    colPtr[colPtrIndex] = elementCount;
+}
+
+template<typename T>
+void CscMatrixParser<T>::printCSC(){
+
+    printf("Col Ptr:\n");
+    for (size_t i = 0; i < this->colCount + 1; i++)
+    {
+        printf("%d ", colPtr[i]);
+    }
+
+    printf("\nRow Ids:\n");
+    for (size_t i = 0; i < this->nnz; i++)
+    {
+        printf("%d ", rowIds[i]);
+    }
+
+    printf("\nValues:\n");
+    for (size_t i = 0; i < this->nnz; i++)
+    {
+        std::cout << values[i] << " ";
+    }
+    printf("\n");
+}
+
+template<typename T>
+CscMatrixParser<T>::~CscMatrixParser(){
+    free(colPtr);
+}
+
+
+template class MatrixParser<float>;
+template class MatrixParser<double>;
+
+template class CooMatrixParser<float>;
+template class CooMatrixParser<double>;
+
+template class CsrMatrixParser<float>;
+template class CsrMatrixParser<double>;
+
+template class CscMatrixParser<float>;
+template class CscMatrixParser<double>;
