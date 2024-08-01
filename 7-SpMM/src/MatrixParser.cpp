@@ -162,7 +162,8 @@ template<typename T>
 void MatrixParser<T>::printCoordinates(){
     for (size_t i = 0; i < nnz; i++)
     {
-        printf("%d %d %f\n", _rowIds[i], _colIds[i], _values[i]);
+        std::cout << _rowIds[i] << " " << _colIds[i] << " " << _values[i] << "\n";
+        //printf("%d %d %f\n", _rowIds[i], _colIds[i], _values[i]);
     }
     
 }
@@ -219,6 +220,12 @@ void MatrixParser<T>::sort(Order order){
 
 template<typename T>
 bool MatrixParser<T>::sparseMatrixToClassicMatrix(){
+
+    if (classicMatrixAllocated)
+    {
+        return true;
+    }
+    
 
     if (rowCount > maxMatrixSizeToConvertNormalMatrix || colCount > maxMatrixSizeToConvertNormalMatrix)
     {
@@ -440,14 +447,18 @@ CscMatrixParser<T>::~CscMatrixParser(){
 }
 
 
+template class MatrixParser<int>;
 template class MatrixParser<float>;
 template class MatrixParser<double>;
 
+template class CooMatrixParser<int>;
 template class CooMatrixParser<float>;
 template class CooMatrixParser<double>;
 
+template class CsrMatrixParser<int>;
 template class CsrMatrixParser<float>;
 template class CsrMatrixParser<double>;
 
+template class CscMatrixParser<int>;
 template class CscMatrixParser<float>;
 template class CscMatrixParser<double>;
