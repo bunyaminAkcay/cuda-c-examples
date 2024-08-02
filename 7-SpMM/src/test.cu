@@ -2,11 +2,13 @@
 #include "MatrixHelper.h"
 #include "cuSparseKernels.cuh"
 #include "CsrBasedSpMM.cuh"
-
+#include "CRCSpMM.cuh"
 #include <string>
 
 typedef double element_t;
 
+template<typename T>
+using KernelType = void (*)(int* h_A_rowPtr, int* h_A_colIds, T* h_A_values, T* h_B, T* h_C, T* h_D, size_t m, size_t k, size_t n, size_t nnz, T alpha, T beta);
 
 struct testMatrix
 {
@@ -15,13 +17,13 @@ struct testMatrix
 };
 
 
-testMatrix matrices[] = {testMatrix{"494_bus.mtx", true}, testMatrix{"662_bus.mtx", true}, testMatrix{"1138_bus.mtx", true}, testMatrix{"abb313.mtx", false}, testMatrix{"arc130.mtx", false}, testMatrix{"ash219.mtx", false}, testMatrix{"b1_ss.mtx", false}, testMatrix{"bcspwr04.mtx", true}, testMatrix{"bcsstk01.mtx", true}, testMatrix{"bcsstk01.mtx", true}, testMatrix{"blckhole.mtx", true}, testMatrix{"can_24.mtx", true}, testMatrix{"dwt_607.mtx", true}, testMatrix{"eris1176.mtx", true} };
+testMatrix matrices[] = {testMatrix{"494_bus.mtx", true}, testMatrix{"662_bus.mtx", true}, testMatrix{"1138_bus.mtx", true}, testMatrix{"abb313.mtx", false}, testMatrix{"arc130.mtx", false}, testMatrix{"ash219.mtx", false}, testMatrix{"b1_ss.mtx", false}, testMatrix{"bcspwr04.mtx", true}, testMatrix{"bcsstk01.mtx", true}, testMatrix{"blckhole.mtx", true}, testMatrix{"can_24.mtx", true}, testMatrix{"dwt_607.mtx", true}, testMatrix{"eris1176.mtx", true} };
 
 
-void testCsrBasedSpMM(const testMatrix &testMatrix, double tolerance, bool printResult = false){
+void testSpMM(const testMatrix &testMatrix, KernelType<element_t> kernel,  double tolerance, bool printResult = false){
         
         CsrMatrixParser<element_t> csrMatrixParser("matrices/"+testMatrix.fileName, testMatrix.symmetrical);
-        //cooMatrixParser.saveSparseMatrixAsPPM3Image("matrixImages/b1_ss");
+        //csrMatrixParser.saveSparseMatrixAsPPM3Image("matrixImages/"+testMatrix.fileName);
         
         size_t m = csrMatrixParser.getRowCount();
         size_t k = csrMatrixParser.getColCount();
@@ -56,7 +58,7 @@ void testCsrBasedSpMM(const testMatrix &testMatrix, double tolerance, bool print
         MatrixHelper<element_t>::initZeroMatrix(h_C, m, n);
         MatrixHelper<element_t>::initZeroMatrix(h_D_csrBased, m, n);
 
-        CsrBasedSpMM<element_t>(h_A_rowPtr, h_A_colIds, h_A_values, h_B, h_C, h_D_csrBased, m, k, n, nnz, alpha, beta);
+        kernel(h_A_rowPtr, h_A_colIds, h_A_values, h_B, h_C, h_D_csrBased, m, k, n, nnz, alpha, beta);
 
         if(printResult && csrMatrixParser.sparseMatrixToClassicMatrix()){
             MatrixHelper<element_t>::printResult(m, n, k, csrMatrixParser.getClassicMatrix(), h_B, h_C, h_D_csrBased, true);
@@ -95,11 +97,22 @@ void testCsrBasedSpMM(const testMatrix &testMatrix, double tolerance, bool print
 int main()
 {
     double tolerance = 0.0001;
-    printf("Tolerance:\t %.8lf\n====\n", tolerance);
+    
+    printf("Tolerance:\t %.8lf\n", tolerance);
+    
+    printf("\nCsr based SpMM test results\n======================\n");
     
     for(const testMatrix &testMatrix : matrices){
-        testCsrBasedSpMM(testMatrix, tolerance);
+        testSpMM(testMatrix, CsrBasedSpMM, tolerance);
     }
+
+    printf("\nCRC SpMM test results\n======================\n");
     
+    for(const testMatrix &testMatrix : matrices){
+        testSpMM(testMatrix, CRCSpMM, tolerance);
+    }
+
+    //testSpMM(matrices[8], CRCSpMM, tolerance, true);
+
     return 0;
 }
